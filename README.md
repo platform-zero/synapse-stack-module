@@ -1,3 +1,24 @@
-# synapse-stack-module
+# synapse stack module
 
-Stack module `synapse` extracted from `sso-stack-generator`.
+- Module id: `synapse`
+- Module repo: `synapse-stack-module`
+- Source repo: none declared
+- Lifecycle: `active`
+
+## Owned overlays
+- `stack.compose/synapse.yml`
+- `stack.config/synapse`
+- `stack.containers/synapse`
+
+## Dependencies
+- `stack-foundation`
+
+## Validation
+
+```sh
+./tests/validate.sh
+```
+
+## Lifecycle
+
+`active` modules are expected to keep `stack.module.json`, owned overlays, and `tests/validate.sh` in sync.
