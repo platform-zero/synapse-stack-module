@@ -1,0 +1,110 @@
+services:
+  synapse-permissions:
+    image: matrixdotorg/synapse:v1.144.0
+    container_name: synapse-permissions
+    restart: "no"
+    user: "0:0"
+    network_mode: none
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - synapse_data:/data
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        mkdir -p /data
+        chown 991:991 /data
+        chmod 0775 /data
+        find /data -mindepth 1 -exec chown 991:991 {} +
+        find /data -mindepth 1 -exec chmod u+rwX {} +
+
+  synapse:
+    image: matrixdotorg/synapse:v1.144.0
+    container_name: synapse
+    restart: unless-stopped
+    user: "991:991"
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      caddy:
+      postgres:
+      valkey:
+      matrix-internal:
+      internet:
+    depends_on:
+      synapse-permissions:
+        condition: service_completed_successfully
+      caddy:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_started
+    environment:
+      DOMAIN: ${DOMAIN}
+      SYNAPSE_SERVER_NAME: matrix.${DOMAIN}
+      SYNAPSE_REPORT_STATS: yes
+      SYNAPSE_ENABLE_REGISTRATION: ${MATRIX_ENABLE_REGISTRATION:-false}
+      SYNAPSE_TRUSTED_PROXIES: 172.16.0.0/12
+      SYNAPSE_LOG_LEVEL: WARNING
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: synapse
+      POSTGRES_USER: synapse
+      REDIS_HOST: redis-synapse
+      UID: 991
+      GID: 991
+      PYTHONDONTWRITEBYTECODE: 1
+    entrypoint: ["/tmp/entrypoint.sh"]
+    volumes:
+      - synapse_data:/data
+      - ./configs/synapse/homeserver.yaml:/data/homeserver.yaml:ro
+      - ./configs/synapse/entrypoint.sh:/tmp/entrypoint.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8008/health || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+  synapse-room-bootstrap:
+    image: matrixdotorg/synapse:v1.144.0
+    container_name: synapse-room-bootstrap
+    restart: "no"
+    networks:
+      postgres:
+      matrix-internal:
+    depends_on:
+      postgres:
+        condition: service_healthy
+      synapse:
+        condition: service_healthy
+      matrix-authentication-service:
+        condition: service_started
+    environment:
+      DOMAIN: ${DOMAIN}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: synapse
+      POSTGRES_USER: synapse
+      POSTGRES_SYNAPSE_PASSWORD: ${POSTGRES_SYNAPSE_PASSWORD}
+      MATRIX_HOMESERVER_INTERNAL_URL: http://synapse:8008
+    entrypoint:
+      - sh
+      - /tmp/bootstrap-default-rooms.sh
+    volumes:
+      - ./configs/synapse/homeserver.yaml:/data/homeserver.yaml:ro
+      - ./configs/synapse/bootstrap-default-rooms.sh:/tmp/bootstrap-default-rooms.sh:ro

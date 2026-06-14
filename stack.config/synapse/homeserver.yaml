@@ -1,0 +1,106 @@
+server_name: "matrix.{{DOMAIN}}"
+pid_file: /data/homeserver.pid
+public_baseurl: "https://matrix.{{DOMAIN}}/"
+serve_server_wellknown: true
+extra_well_known_client_content:
+  io.element.e2ee:
+    default: true
+  org.matrix.msc4143.rtc_foci:
+    - type: livekit
+      livekit_service_url: "https://matrix-rtc.{{DOMAIN}}/livekit/jwt"
+
+experimental_features:
+  msc3266_enabled: true
+  msc4222_enabled: true
+
+max_event_delay_duration: 24h
+
+rc_message:
+  per_second: 0.5
+  burst_count: 30
+
+rc_delayed_event_mgmt:
+  per_second: 1
+  burst_count: 20
+
+listeners:
+  - port: 8008
+    tls: false
+    type: http
+    x_forwarded: true
+    bind_addresses: ['0.0.0.0']
+    resources:
+      - names: [client, federation]
+        compress: false
+
+database:
+  name: psycopg2
+  allow_unsafe_locale: true
+  args:
+    user: synapse
+    password: "{{POSTGRES_SYNAPSE_PASSWORD}}"
+    database: synapse
+    host: postgres
+    port: 5432
+    cp_min: 5
+    cp_max: 10
+
+redis:
+  enabled: false
+
+
+media_store_path: /data/media_store
+uploads_path: /data/uploads
+
+max_upload_size: 50M
+
+registration_shared_secret: "{{SYNAPSE_REGISTRATION_SECRET}}"
+macaroon_secret_key: "{{SYNAPSE_MACAROON_SECRET}}"
+form_secret: "{{SYNAPSE_FORM_SECRET}}"
+
+signing_key_path: "/data/matrix.{{DOMAIN}}.signing.key"
+
+trusted_key_servers:
+  - server_name: "matrix.org"
+
+report_stats: true
+
+enable_registration: false
+enable_registration_without_verification: false
+password_config:
+  enabled: false
+
+matrix_authentication_service:
+  enabled: {{MATRIX_AUTHENTICATION_SERVICE_ACTIVE}}
+  endpoint: "http://matrix-authentication-service:8080/"
+  secret: "{{MATRIX_AUTHENTICATION_SERVICE_SHARED_SECRET}}"
+
+auto_join_rooms:
+  - "#general:matrix.{{DOMAIN}}"
+  - "#voice-lounge:matrix.{{DOMAIN}}"
+auto_join_user_id: "@roombot:matrix.{{DOMAIN}}"
+autocreate_auto_join_rooms: false
+autocreate_auto_join_rooms_federated: false
+
+{{SYNAPSE_LEGACY_SSO_CONFIG}}
+
+url_preview_enabled: true
+url_preview_ip_range_blacklist:
+  - '127.0.0.0/8'
+  - '10.0.0.0/8'
+  - '172.16.0.0/12'
+  - '192.168.0.0/16'
+  - '100.64.0.0/10'
+  - '169.254.0.0/16'
+  - '::1/128'
+  - 'fe80::/64'
+  - 'fc00::/7'
+
+trusted_key_servers:
+  - server_name: "matrix.org"
+
+federation_ip_range_blacklist:
+  - '127.0.0.0/8'
+  - '10.0.0.0/8'
+  - '172.16.0.0/12'
+  - '192.168.0.0/16'

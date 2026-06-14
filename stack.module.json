@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "synapse",
+  "repo": "synapse-stack-module",
+  "runtimeId": "synapse",
+  "lifecycle": "active",
+  "dependencies": [
+    "stack-foundation"
+  ],
+  "overlays": [
+    "stack.compose/synapse.yml",
+    "stack.config/synapse",
+    "stack.containers/synapse"
+  ]
+}
