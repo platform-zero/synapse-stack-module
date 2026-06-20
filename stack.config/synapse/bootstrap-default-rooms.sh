@@ -5,6 +5,11 @@ config_path="${HOMESERVER_CONFIG:-/data/homeserver.yaml}"
 internal_url="${MATRIX_HOMESERVER_INTERNAL_URL:-http://synapse:8008}"
 roombot_localpart="${MATRIX_AUTOJOIN_LOCALPART:-roombot}"
 
+if [ "${MATRIX_AUTHENTICATION_SERVICE_ACTIVE:-false}" = "true" ]; then
+  echo "[matrix-bootstrap] Skipping default room bootstrap while Matrix Authentication Service is active"
+  exit 0
+fi
+
 if [ -z "${DOMAIN:-}" ]; then
   echo "[matrix-bootstrap] DOMAIN is required"
   exit 1
