@@ -18,7 +18,8 @@
   "overlays": [
     "stack.compose/synapse.yml",
     "stack.config/synapse",
-    "stack.containers/synapse"
+    "stack.containers/synapse",
+    "stack.containers/test-runner/playwright-tests/tests/deep/oidc/matrix-media-integrity.spec.ts"
   ],
   "testAssets": []
 }
