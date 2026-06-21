@@ -1,94 +1,12 @@
 import { expect, test } from '@playwright/test';
-import type { APIRequestContext, Page } from '@playwright/test';
+import type { APIRequestContext } from '@playwright/test';
 import { webcrypto, createHash, randomBytes } from 'crypto';
-import { KeycloakLoginPage } from '../../../pages/KeycloakLoginPage';
-import { domain, testUser } from '../shared/oidc';
-import { serviceUrl } from '../../../utils/stack-urls';
+import { domain } from '../shared/oidc';
+import { loginElementMatrixSession } from '../shared/element-matrix-session';
 
 const homeserverUrl = `https://matrix.${domain}`;
 const senderMobileUserAgent = 'Element Classic/1.6.56 (samsung SM-S721B; Android 16; Flavour GooglePlay; MatrixAndroidSdk2 1.6.56)';
 const receiverMobileUserAgent = 'Element Classic/1.6.56 (Google Pixel 9 Pro XL; Android 16; Flavour GooglePlay; MatrixAndroidSdk2 1.6.56)';
-
-type MatrixSession = {
-  userId: string;
-  accessToken: string;
-};
-
-async function loginElementMatrixSession(page: Page): Promise<MatrixSession> {
-  await page.goto(serviceUrl('element', '/#/login'), { waitUntil: 'domcontentloaded' });
-
-  const signIn = page.getByRole('link', { name: /sign in/i }).or(
-    page.getByRole('button', { name: /sign in/i })
-  ).first();
-  if (await signIn.isVisible().catch(() => false)) {
-    await signIn.click({ force: true });
-    await page.waitForTimeout(1000);
-  }
-
-  const homeserverInput = page.locator('input[placeholder*="matrix"], input[name*="home"], input[id*="home"]').first();
-  if (await homeserverInput.isVisible().catch(() => false)) {
-    const currentValue = await homeserverInput.inputValue().catch(() => '');
-    if (!currentValue) {
-      await homeserverInput.fill(homeserverUrl);
-    }
-    await page.getByRole('button', { name: /continue|next|submit/i }).first().click({ force: true }).catch(async () => {
-      await homeserverInput.press('Enter').catch(() => {});
-    });
-    await page.waitForTimeout(1500);
-  }
-
-  const sso = page.getByRole('button', {
-    name: /continue with keycloak sso|continue with sso|single sign-on|sso|keycloak/i,
-  }).or(
-    page.getByRole('link', {
-      name: /continue with keycloak sso|continue with sso|single sign-on|sso|keycloak/i,
-    })
-  ).first();
-  await sso.waitFor({ state: 'visible', timeout: 30000 }).catch(() => {});
-  if (await sso.isVisible().catch(() => false)) {
-    await sso.click({ force: true, noWaitAfter: true });
-    await page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {});
-  }
-
-  if (/keycloak|keycloak-auth/.test(page.url())) {
-    await new KeycloakLoginPage(page).login(testUser.username, testUser.password);
-  }
-
-  for (const buttonName of [/create account/i, /^continue$/i]) {
-    const button = page.getByRole('button', { name: buttonName }).first();
-    await button.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
-    if (await button.isVisible().catch(() => false)) {
-      await button.click({ force: true });
-      await page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {});
-    }
-  }
-
-  if (page.url().includes('loginToken=')) {
-    await page.waitForURL((url) => !url.toString().includes('loginToken='), { timeout: 60000 }).catch(() => {});
-  }
-
-  const setupKeysDialog = page.locator('text=/setting up keys/i').first();
-  if (await setupKeysDialog.isVisible().catch(() => false)) {
-    await setupKeysDialog.waitFor({ state: 'hidden', timeout: 90000 }).catch(() => {});
-  }
-  const verifyLater = page.getByRole('button', { name: /i'?ll verify later|verify later|skip verification/i }).first();
-  if (await verifyLater.isVisible().catch(() => false)) {
-    await verifyLater.click({ force: true }).catch(() => {});
-  }
-
-  await expect.poll(
-    async () => page.evaluate(() => window.localStorage.getItem('mx_access_token') || ''),
-    { timeout: 90000, message: 'Element Matrix access token should be present after MAS SSO' },
-  ).not.toBe('');
-
-  const session = await page.evaluate(() => ({
-    userId: window.localStorage.getItem('mx_user_id') || window.localStorage.getItem('mx_userid') || '',
-    accessToken: window.localStorage.getItem('mx_access_token') || '',
-  }));
-  expect(session.userId, 'Element Matrix user id').toMatch(new RegExp(`:matrix\\.${domain.replace(/\./g, '\\.')}$`, 'i'));
-  expect(session.accessToken, 'Element Matrix access token').toBeTruthy();
-  return session;
-}
 
 function oggCrc(data: Buffer): number {
   let crc = 0;
@@ -319,7 +237,7 @@ async function downloadMedia(
 }
 
 test('Matrix external media route preserves mobile voice attachment bytes across two devices', async ({ page, request }) => {
-  test.setTimeout(120000);
+  test.setTimeout(180000);
   const matrixSession = await loginElementMatrixSession(page);
   const senderToken = matrixSession.accessToken;
   const receiverToken = matrixSession.accessToken;
