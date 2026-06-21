@@ -1,12 +1,11 @@
 import { expect, test } from '@playwright/test';
 import type { APIRequestContext } from '@playwright/test';
 import { webcrypto, createHash, randomBytes } from 'crypto';
-import { Client } from 'pg';
 import { domain } from '../shared/oidc';
 
 const homeserverUrl = `https://matrix.${domain}`;
 const senderUserId = `@roombot:matrix.${domain}`;
-const receiverUserId = `@gerald:matrix.${domain}`;
+const receiverUserId = senderUserId;
 const senderMobileUserAgent = 'Element Classic/1.6.56 (samsung SM-S721B; Android 16; Flavour GooglePlay; MatrixAndroidSdk2 1.6.56)';
 const receiverMobileUserAgent = 'Element Classic/1.6.56 (Google Pixel 9 Pro XL; Android 16; Flavour GooglePlay; MatrixAndroidSdk2 1.6.56)';
 
@@ -18,27 +17,35 @@ function requireEnv(name: string): string {
   return value;
 }
 
-async function fetchMatrixAccessToken(userId: string): Promise<string> {
-  const client = new Client({
-    host: process.env.MATRIX_POSTGRES_HOST || 'postgres',
-    port: Number(process.env.MATRIX_POSTGRES_PORT || '5432'),
-    database: process.env.MATRIX_POSTGRES_DB || 'synapse',
-    user: process.env.MATRIX_POSTGRES_USER || 'synapse',
-    password: requireEnv('MATRIX_POSTGRES_PASSWORD'),
+function roombotPassword(): string {
+  return createHash('sha256')
+    .update(`${requireEnv('SYNAPSE_REGISTRATION_SECRET')}:matrix-roombot:v1`)
+    .digest('hex');
+}
+
+async function loginMatrixUser(
+  request: APIRequestContext,
+  userId: string,
+  deviceLabel: string,
+): Promise<string> {
+  const response = await request.post(`${homeserverUrl}/_matrix/client/v3/login`, {
+    data: {
+      type: 'm.login.password',
+      identifier: {
+        type: 'm.id.user',
+        user: userId,
+      },
+      password: roombotPassword(),
+      device_id: `playwright-media-${deviceLabel}-${Date.now()}`,
+    },
   });
 
-  await client.connect();
-  try {
-    const result = await client.query<{ token: string }>(
-      'SELECT token FROM access_tokens WHERE user_id = $1 ORDER BY id DESC LIMIT 1',
-      [userId],
-    );
-    const token = result.rows[0]?.token || '';
-    expect(token, `Synapse access token for ${userId}`).toBeTruthy();
-    return token;
-  } finally {
-    await client.end();
-  }
+  const body = await response.text();
+  expect(response.ok(), `Matrix login failed for ${userId}: ${response.status()} ${body}`).toBe(true);
+  const payload = JSON.parse(body) as { access_token?: string; user_id?: string };
+  expect(payload.user_id).toBe(userId);
+  expect(payload.access_token, `Synapse access token for ${userId}`).toBeTruthy();
+  return payload.access_token || '';
 }
 
 function oggCrc(data: Buffer): number {
@@ -270,8 +277,8 @@ async function downloadMedia(
 }
 
 test('Matrix external media route preserves mobile voice attachment bytes across two devices', async ({ request }) => {
-  const senderToken = await fetchMatrixAccessToken(senderUserId);
-  const receiverToken = await fetchMatrixAccessToken(receiverUserId);
+  const senderToken = await loginMatrixUser(request, senderUserId, 'sender');
+  const receiverToken = await loginMatrixUser(request, receiverUserId, 'receiver');
   const voicePayload = voiceLikeOggPayload();
   assertSingleSerialSequentialOgg(voicePayload);
 
