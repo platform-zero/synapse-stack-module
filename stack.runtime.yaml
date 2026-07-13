@@ -1,0 +1,115 @@
+---
+schemaVersion: 1
+module: "synapse"
+target: "apps"
+services:
+  synapse-permissions:
+    image: "matrixdotorg/synapse:v1.144.0"
+    containerName: "synapse-permissions"
+    lifecycle: "oneshot"
+    updatePolicy: "pinned"
+    placement: "rootful"
+    volumes:
+    - "synapse_data:/data"
+    entrypoint:
+    - "/bin/sh"
+    - "-ec"
+    - "mkdir -p /data\nchown 991:991 /data\nchmod 0775 /data\nfind /data -mindepth\
+      \ 1 -exec chown 991:991 {} +\nfind /data -mindepth 1 -exec chmod u+rwX {} +\n"
+    restart: "no"
+    user: "0:0"
+    capAdd:
+    - "CHOWN"
+    - "DAC_OVERRIDE"
+    - "FOWNER"
+    capDrop:
+    - "ALL"
+    securityOpt:
+    - "no-new-privileges:true"
+  synapse:
+    image: "matrixdotorg/synapse:v1.144.0"
+    containerName: "synapse"
+    lifecycle: "daemon"
+    updatePolicy: "registry"
+    placement: "rootful"
+    dependencies:
+      synapse-permissions: "completed"
+      caddy: "started"
+      postgres: "healthy"
+      valkey: "started"
+    environment:
+      DOMAIN: "${DOMAIN}"
+      SYNAPSE_SERVER_NAME: "matrix.${DOMAIN}"
+      SYNAPSE_REPORT_STATS: true
+      SYNAPSE_ENABLE_REGISTRATION: "${MATRIX_ENABLE_REGISTRATION:-false}"
+      SYNAPSE_TRUSTED_PROXIES: "172.16.0.0/12"
+      SYNAPSE_LOG_LEVEL: "WARNING"
+      POSTGRES_HOST: "postgres"
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: "synapse"
+      POSTGRES_USER: "synapse"
+      REDIS_HOST: "redis-synapse"
+      UID: 991
+      GID: 991
+      PYTHONDONTWRITEBYTECODE: 1
+    networks:
+      caddy: null
+      postgres: null
+      valkey: null
+      matrix-internal: null
+      internet: null
+    volumes:
+    - "synapse_data:/data"
+    - "./configs/synapse/homeserver.yaml:/data/homeserver.yaml:ro"
+    - "./configs/synapse/entrypoint.sh:/tmp/entrypoint.sh:ro"
+    health:
+      test:
+      - "CMD-SHELL"
+      - "curl -f http://localhost:8008/health || exit 1"
+      interval: "60s"
+      timeout: "10s"
+      retries: 3
+      start_period: "120s"
+    entrypoint:
+    - "/tmp/entrypoint.sh"
+    restart: "unless-stopped"
+    user: "991:991"
+    tmpfs:
+    - "/tmp:size=64m,mode=1777"
+    readOnly: true
+    init: true
+    capDrop:
+    - "ALL"
+    securityOpt:
+    - "no-new-privileges:true"
+  synapse-room-bootstrap:
+    image: "matrixdotorg/synapse:v1.144.0"
+    containerName: "synapse-room-bootstrap"
+    lifecycle: "oneshot"
+    updatePolicy: "pinned"
+    placement: "rootful"
+    dependencies:
+      postgres: "healthy"
+      synapse: "healthy"
+      matrix-authentication-service: "started"
+    environment:
+      DOMAIN: "${DOMAIN}"
+      POSTGRES_HOST: "postgres"
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: "synapse"
+      POSTGRES_USER: "synapse"
+      POSTGRES_SYNAPSE_PASSWORD: "${POSTGRES_SYNAPSE_PASSWORD}"
+      MATRIX_HOMESERVER_INTERNAL_URL: "http://synapse:8008"
+      MATRIX_AUTHENTICATION_SERVICE_ACTIVE: "${MATRIX_AUTHENTICATION_SERVICE_ACTIVE:-false}"
+    networks:
+      postgres: null
+      matrix-internal: null
+    volumes:
+    - "./configs/synapse/homeserver.yaml:/data/homeserver.yaml:ro"
+    - "./configs/synapse/bootstrap-default-rooms.sh:/tmp/bootstrap-default-rooms.sh:ro"
+    entrypoint:
+    - "sh"
+    - "/tmp/bootstrap-default-rooms.sh"
+    restart: "no"
+networks: {}
+volumes: {}
