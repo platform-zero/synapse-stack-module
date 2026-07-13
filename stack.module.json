@@ -20,7 +20,8 @@
     "stack.config/synapse",
     "stack.containers/synapse",
     "stack.containers/test-runner/playwright-tests/tests/deep/oidc/matrix-media-integrity.spec.ts",
-    "stack.kotlin/test-runner/src/main/kotlin/org/webservices/testrunner/suites/SynapseCommunicationTests.kt"
+    "stack.kotlin/test-runner/src/main/kotlin/org/webservices/testrunner/suites/SynapseCommunicationTests.kt",
+    "stack.runtime.yaml"
   ],
   "testAssets": []
 }

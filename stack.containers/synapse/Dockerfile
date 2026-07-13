@@ -14,3 +14,5 @@ RUN apt-get update && \
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD []
+
+USER 991:991
