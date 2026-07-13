@@ -1,4 +1,4 @@
-FROM matrixdotorg/synapse:v1.141.0
+FROM docker.io/matrixdotorg/synapse:v1.141.0
 
 USER root
 
