@@ -6,7 +6,7 @@
 - Lifecycle: `active`
 
 ## Owned overlays
-- `stack.compose/synapse.yml`
+- `stack.runtime.yaml`
 - `stack.config/synapse`
 - `stack.containers/synapse`
 
