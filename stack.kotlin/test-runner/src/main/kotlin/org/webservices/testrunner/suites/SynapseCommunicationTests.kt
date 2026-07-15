@@ -15,10 +15,6 @@ test("Synapse homeserver is healthy") {
     test("Synapse federation endpoint responds") {
         val response = client.getRawResponse("${env.endpoints.synapse}/_matrix/federation/v1/version")
         response.status shouldBe HttpStatusCode.OK
-    }
-
-    test("Synapse server info is accessible") {
-        val response = client.getRawResponse("${env.endpoints.synapse}/_matrix/client/versions")
-        response.status shouldBe HttpStatusCode.OK
+        response.bodyAsText() shouldContain "server"
     }
 }

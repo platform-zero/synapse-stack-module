@@ -207,7 +207,7 @@ async function uploadMedia(
     },
   });
   const text = await response.text();
-  expect(response.ok(), `Matrix media upload failed: ${response.status()} ${text}`).toBe(true);
+  expect(response.status(), `Matrix media upload failed: ${text}`).toBe(200);
   const payload = JSON.parse(text) as { content_uri?: string };
   expect(payload.content_uri, 'uploaded Matrix content URI').toMatch(/^mxc:\/\//);
   return payload.content_uri || '';
@@ -220,8 +220,8 @@ async function downloadMedia(
   contentUri: string,
 ): Promise<Buffer> {
   const [, serverName, mediaId] = /^mxc:\/\/([^/]+)\/(.+)$/.exec(contentUri) || [];
-  expect(serverName, `server name in ${contentUri}`).toBeTruthy();
-  expect(mediaId, `media id in ${contentUri}`).toBeTruthy();
+  expect(serverName, `server name in ${contentUri}`).toMatch(/\S/);
+  expect(mediaId, `media id in ${contentUri}`).toMatch(/\S/);
   const response = await request.get(
     `${homeserverUrl}/_matrix/client/v1/media/download/${serverName}/${mediaId}`,
     {
@@ -232,7 +232,7 @@ async function downloadMedia(
     },
   );
   const body = await response.body();
-  expect(response.ok(), `Matrix media download failed: ${response.status()} ${body.toString('utf8', 0, 200)}`).toBe(true);
+  expect(response.status(), `Matrix media download failed: ${body.toString('utf8', 0, 200)}`).toBe(200);
   return Buffer.from(body);
 }
 
