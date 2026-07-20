@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "exceptions": [
+    {
+      "rule": "added-capabilities",
+      "path": "stack.runtime.yaml",
+      "reason": "The one-shot data initializer needs ownership capabilities to prepare the persistent Synapse data volume.",
+      "mitigations": [
+        "Only CHOWN, DAC_OVERRIDE, and FOWNER are granted to the initializer.",
+        "The long-running Synapse service is read-only and runs as UID 991."
+      ]
+    },
+    {
+      "rule": "container-root-default",
+      "path": "stack.runtime.yaml",
+      "reason": "The one-shot initializer assigns persistent Synapse data to the non-root application identity.",
+      "mitigations": [
+        "The root initializer exits before Synapse starts.",
+        "The network service runs as UID 991 with a read-only root filesystem."
+      ]
+    }
+  ]
+}
