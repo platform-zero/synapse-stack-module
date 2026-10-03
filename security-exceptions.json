@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "exceptions": [
+    {
+      "rule": "container-root-default",
+      "path": "stack.runtime.yaml",
+      "reason": "The one-shot Synapse permissions task must change ownership of the existing data volume before the server starts as UID 991.",
+      "mitigations": [
+        "The task runs once and has no network attachment.",
+        "The long-running Synapse server runs as UID 991 with a read-only root filesystem and all capabilities dropped."
+      ]
+    },
+    {
+      "rule": "added-capabilities",
+      "path": "stack.runtime.yaml",
+      "reason": "The one-shot permissions task needs CHOWN, DAC_OVERRIDE, and FOWNER to repair ownership and modes in the Synapse data volume.",
+      "mitigations": [
+        "All capabilities are dropped before adding only the three permissions needed by the one-shot task.",
+        "The task enables no-new-privileges and mounts only the Synapse data volume."
+      ]
+    }
+  ]
+}
