@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+umask 077
 if [ "$(id -u)" = "0" ]; then
     target_uid="${UID:-991}"
     target_gid="${GID:-991}"
@@ -30,10 +31,29 @@ echo "Processing homeserver configuration with environment variables"
 python3 -c "
 import os
 import re
+import yaml
+class UniqueYaml(yaml.SafeLoader):
+    def construct_mapping(self, node, deep=False):
+        self.flatten_mapping(node)
+        seen = set()
+        for key_node, _ in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if key in seen:
+                raise ValueError('duplicate YAML key')
+            seen.add(key)
+        return super().construct_mapping(node, deep=deep)
 with open('$HOMESERVER_TEMPLATE', 'r') as f:
     content = f.read()
 content = re.sub(r'\\\$\{([^}]+)\}', lambda m: os.environ.get(m.group(1), m.group(0)), content)
-with open('$HOMESERVER_CONFIG', 'w') as f:
+try:
+    parsed = yaml.load(content, Loader=UniqueYaml)
+    if not isinstance(parsed, dict):
+        raise ValueError('mapping required')
+except Exception:
+    raise SystemExit('Synapse configuration rejected: invalid or duplicate YAML')
+fd = os.open('$HOMESERVER_CONFIG', os.O_WRONLY | os.O_CREAT | os.O_TRUNC | os.O_NOFOLLOW, 0o600)
+os.fchmod(fd, 0o600)
+with os.fdopen(fd, 'w') as f:
     f.write(content)
 print('Environment variables substituted')
 "

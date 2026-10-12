@@ -96,9 +96,6 @@ url_preview_ip_range_blacklist:
   - 'fe80::/64'
   - 'fc00::/7'
 
-trusted_key_servers:
-  - server_name: "matrix.org"
-
 federation_ip_range_blacklist:
   - '127.0.0.0/8'
   - '10.0.0.0/8'
