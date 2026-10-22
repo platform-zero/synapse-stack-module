@@ -4,7 +4,7 @@ module: "synapse"
 target: "apps"
 services:
   synapse-permissions:
-    image: "matrixdotorg/synapse:v1.144.0"
+    image: "matrixdotorg/synapse:v1.144.0@sha256:39405b7a2a86ab8e987aa3f4f1e74af11ffaf751a5306f1757bc3fdbd8d19832"
     containerName: "synapse-permissions"
     lifecycle: "oneshot"
     updatePolicy: "pinned"
@@ -27,7 +27,7 @@ services:
     securityOpt:
     - "no-new-privileges:true"
   synapse:
-    image: "matrixdotorg/synapse:v1.144.0"
+    image: "matrixdotorg/synapse:v1.144.0@sha256:39405b7a2a86ab8e987aa3f4f1e74af11ffaf751a5306f1757bc3fdbd8d19832"
     containerName: "synapse"
     lifecycle: "daemon"
     updatePolicy: "registry"
@@ -83,7 +83,7 @@ services:
     securityOpt:
     - "no-new-privileges:true"
   synapse-room-bootstrap:
-    image: "matrixdotorg/synapse:v1.144.0"
+    image: "matrixdotorg/synapse:v1.144.0@sha256:39405b7a2a86ab8e987aa3f4f1e74af11ffaf751a5306f1757bc3fdbd8d19832"
     containerName: "synapse-room-bootstrap"
     lifecycle: "oneshot"
     updatePolicy: "pinned"
